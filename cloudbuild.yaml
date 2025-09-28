@@ -1,0 +1,33 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'gcr.io/$PROJECT_ID/$REPO_NAME:$SHORT_SHA', '.']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'gcr.io/$PROJECT_ID/$REPO_NAME:$SHORT_SHA']
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: Deploy
+  args:
+    - 'run'
+    - 'deploy'
+    - 'ilia-zx210o' # Use $REPO_NAME or explicit repoName
+    - '--image'
+    - 'gcr.io/$PROJECT_ID/$REPO_NAME:$SHORT_SHA'
+    - '--platform'
+    - 'managed'
+    - '--region'
+    - 'us-central1'
+    - '--allow-unauthenticated' # Try to make it public on deploy
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: Set-Public-Policy # Add explicit step to ensure public access
+  args:
+    - 'run'
+    - 'services'
+    - 'add-iam-policy-binding'
+    - 'ilia-zx210o' # Use $REPO_NAME or explicit repoName
+    - '--member=allUsers'
+    - '--role=roles/run.invoker'
+    - '--platform'
+    - 'managed'
+    - '--region'
+    - 'us-central1'
+  waitFor:
+    - Deploy # Wait for the deployment step to finish
